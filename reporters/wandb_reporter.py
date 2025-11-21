@@ -174,6 +174,34 @@ class TrainingReporter:
 
         wandb.log(log_dict)
 
+    def log_images(
+        self,
+        images: list,
+        caption: Optional[str] = None,
+        prefix: str = "images"
+    ):
+        """
+        Log images to wandb.
+
+        Args:
+            images: List of wandb.Image objects or numpy arrays
+            caption: Optional caption for the images
+            prefix: Prefix for the logged images (default: "images")
+        """
+        if not self.enabled:
+            return
+
+        # Convert numpy arrays to wandb.Image if needed
+        wandb_images = []
+        for img in images:
+            if isinstance(img, wandb.Image):
+                wandb_images.append(img)
+            else:
+                # Assume it's a numpy array
+                wandb_images.append(wandb.Image(img, caption=caption))
+
+        wandb.log({prefix: wandb_images})
+
     def watch_model(self, model, log: str = "gradients", log_freq: int = 100):
         """
         Watch a model's parameters and gradients.
