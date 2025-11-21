@@ -14,5 +14,6 @@ examples/wandb/*
 examples/wandb
 
 examples/.claude
+wandb/*
 
 .claude
