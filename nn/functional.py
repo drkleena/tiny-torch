@@ -27,7 +27,6 @@ def softmax(logits: Value, axis=-1):
     sum_exps = exps.sum(axis=axis, keepdims=True)
     return exps / sum_exps
 
-
 def cross_entropy(logits: Value, targets_one_hot: Value):
     """
     Compute cross-entropy loss between logits and one-hot targets.
@@ -50,3 +49,35 @@ def cross_entropy(logits: Value, targets_one_hot: Value):
     loss_batch_average = loss_per_row.mean()
 
     return loss_batch_average
+
+def mse(predictions: Value, targets: Value):
+    """
+    Compute mean squared error between predictions and targets.
+
+    Args:
+        predictions: Value with shape (B, ...) - model predictions
+        targets: Value with shape (B, ...) - ground truth values
+
+    Returns:
+        Scalar Value representing the mean squared error over the batch
+    """
+    squared_errors = (predictions - targets) ** 2
+    return squared_errors.mean()
+
+def sigmoid(x: Value):
+    """
+    Compute sigmoid activation.
+
+    Args:
+        x: Value to apply sigmoid to
+
+    Returns:
+        Value with sigmoid applied: 1 / (1 + exp(-x))
+    """
+    return 1.0 / (1.0 + (-x).exp())
+
+def binary_cross_entropy(pred: Value, target: Value, eps=1e-7) -> Value:
+    pred_safe = pred.clip(eps, 1.0 - eps)
+    term1 = target * pred_safe.log()
+    term2 = (1 - target) * (1 - pred_safe).log()
+    return -(term1 + term2).mean()

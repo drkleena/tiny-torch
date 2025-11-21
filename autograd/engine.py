@@ -100,6 +100,56 @@ class Value:
     
     __radd__ = __add__
 
+    @staticmethod
+    def _to_value(x):
+        return x if isinstance(x, Value) else Value(x)
+
+    def __gt__(self, other):
+        """
+        Elementwise greater-than comparison.
+        Returns a Value whose data is a float mask of 0.0/1.0.
+        Gradient does NOT flow through this (treated as constant mask).
+        """
+        other = self._to_value(other)
+        mask = (self.data > other.data).astype(float)
+        # no parents: mask is constant w.r.t. autograd
+        return Value(mask)
+
+    def __lt__(self, other):
+        """
+        Elementwise less-than comparison.
+        Returns a Value whose data is a float mask of 0.0/1.0.
+        """
+        other = self._to_value(other)
+        mask = (self.data < other.data).astype(float)
+        return Value(mask)
+
+    def clip(self, min_val, max_val):
+        """
+        Elementwise clip: min(max(self, min_val), max_val)
+        Uses comparison masks; gradients flow only where not clipped.
+        """
+
+        # Make min / max broadcastable Values
+        if not isinstance(min_val, Value):
+            min_val = Value(np.full_like(self.data, float(min_val)))
+        if not isinstance(max_val, Value):
+            max_val = Value(np.full_like(self.data, float(max_val)))
+
+        # Step 1: lower bound -> max(self, min_val)
+        # mask_hi = 1 where self > min_val, else 0
+        mask_hi = self > min_val                     # Value mask
+        one_hi = Value(np.ones_like(mask_hi.data))   # 1s same shape
+        x_hi = mask_hi * self + (one_hi - mask_hi) * min_val
+
+        # Step 2: upper bound -> min(x_hi, max_val)
+        # mask_lo = 1 where x_hi < max_val, else 0
+        mask_lo = x_hi < max_val
+        one_lo = Value(np.ones_like(mask_lo.data))
+        x_clipped = mask_lo * x_hi + (one_lo - mask_lo) * max_val
+
+        return x_clipped
+
     def __mul__(self, other):
         other = other if isinstance(other, Value) else Value(other)
 
@@ -243,21 +293,40 @@ class Value:
         
         return out
     
-    def mean(self, axis=None, keepdims=False):
-        """
-        Mean over all elements (axis=None) or over a given axis.
-        """
-        # 1) use your own sum(...)
-        s = self.sum(axis=axis, keepdims=keepdims)
+    # def mean(self, axis=None, keepdims=False):
+    #     """
+    #     Mean over all elements (axis=None) or over a given axis.
+    #     """
+    #     # 1) use your own sum(...)
+    #     s = self.sum(axis=axis, keepdims=keepdims)
     
-        # 2) figure out how many elements were summed
+    #     # 2) figure out how many elements were summed
+    #     if axis is None:
+    #         count = self.data.size
+    #     else:
+    #         count = self.data.shape[axis]
+    
+    #     # 3) divide by count (your __truediv__ handles this)
+    #     return s / count
+    """
+    attempting to fix for case of autoencoder
+    """
+    import numpy as np
+
+    def mean(self, axis=None, keepdims=False):
+        s = self.sum(axis=axis, keepdims=keepdims)
+
+        # how many elements were summed?
         if axis is None:
             count = self.data.size
         else:
-            count = self.data.shape[axis]
-    
-        # 3) divide by count (your __truediv__ handles this)
+            if isinstance(axis, int):
+                axis = (axis,)
+            # count elements along all reduced axes
+            count = np.prod([self.data.shape[a] for a in axis])
+
         return s / count
+
 
     @staticmethod
     def _unbroadcast(grad, target_shape):

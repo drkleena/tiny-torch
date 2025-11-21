@@ -7,7 +7,7 @@ parameters (weights and biases).
 
 import numpy as np
 from autograd.engine import Value
-
+from .functional import sigmoid
 
 class Linear:
     """
@@ -29,6 +29,7 @@ class Linear:
     
     def __init__(self, in_features, out_features, activation=None):
         # W: (in_features, out_features)
+        # Using He initialization for better training with ReLU
         std = np.sqrt(2.0 / in_features)
         self.W = Value(np.random.randn(in_features, out_features) * std)
         # b: (1, out_features)
@@ -53,6 +54,8 @@ class Linear:
             out = out.relu()
         elif self.activation == "tanh":
             out = out.tanh()
+        elif self.activation == "sigmoid":
+            out = sigmoid(out)
 
         return out
 
