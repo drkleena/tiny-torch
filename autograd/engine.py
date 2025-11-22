@@ -368,6 +368,22 @@ class Value:
         return out
 
     @staticmethod
+    def stack(values, axis=0):
+        datas = [v.data for v in values]
+        out_data = np.stack(datas, axis=axis)
+        out = Value(out_data, _parents=tuple(values), op="stack")
+
+        def _backward():
+            # incoming grad: shape (B, C, H, W)
+            grads = np.split(out.grad, len(values), axis=axis)
+            grads = [g.squeeze(axis=axis) for g in grads]
+            for v, g in zip(values, grads):
+                v.grad += g
+
+        out._backward = _backward
+        return out
+
+    @staticmethod
     def concat(values, axis=0):
         """
         Concatenate a list of Value tensors along a given axis.
