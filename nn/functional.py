@@ -84,48 +84,47 @@ def binary_cross_entropy(pred: Value, target: Value, eps=1e-7) -> Value:
 
 def im2col(X: Value, kernel_size, stride=1, padding=0):
     """
-    X: Value with data.shape (C, H, W)
+    X: Value with data.shape (N, C, H, W)
     padding: int, symmetric zero-padding on H and W
     """
     k = kernel_size
 
     # 1) optionally pad
     if padding > 0:
-        Xp = X.pad(padding, padding)   # (C, H+2p, W+2p)
+        Xps = Value.stack([ input.pad(padding, padding) for input in X ])   # (B, C, H+2p, W+2p)
     else:
-        Xp = X
+        Xps = X
 
-    C, xH, xW = Xp.data.shape
-
+    B, C, xH, xW = Xps.data.shape
+     
     # 2) output spatial dims
     steps_y = (xH - k) // stride + 1
     steps_x = (xW - k) // stride + 1
 
-    # 3) coordinate grid (numpy-only, fine)
+    # # 3) coordinate grid (numpy-only, fine)
     y_coords, x_coords = np.meshgrid(
         np.arange(steps_y),
         np.arange(steps_x),
         indexing='ij'
-    )
-
+    )    
+    
     y_idx = y_coords[:, :, None, None] * stride + np.arange(k)[None, None, :, None]
     x_idx = x_coords[:, :, None, None] * stride + np.arange(k)[None, None, None, :]
 
-    # 4) slice through Value (advanced indexing)
-    patches = Xp[:, y_idx, x_idx]  # (C, Sy, Sx, k, k)
-
+    patches = Xps[:, :, y_idx, x_idx] # (B, C, Sy, Sx, k, k)
     # 5) transpose to (Sy, Sx, C, k, k)
-    patches_transpose = patches.transpose(axes=(1, 2, 0, 3, 4))
-
+    patches_transpose = patches.transpose((0, 2, 3, 1, 4, 5))  # (B, Sy, Sx, C, k, k)
+    B, Sy, Sx, C, k1, k2 = patches_transpose.data.shape
+    
     num_patches = steps_y * steps_x        # Sy * Sx
     patch_area = k * k * C                 # C*k*k
 
     # 6) flatten patches → (num_patches, patch_area)
-    patches_flat = patches_transpose.reshape((num_patches, patch_area))
+    patches_flat = patches_transpose.reshape((B, num_patches, patch_area))
 
     # 7) final cols → (patch_area, num_patches)
-    patches_col = patches_flat.T
-    return patches_col
+    cols = patches_flat.transpose((0, 2, 1))
+    return cols
 
 def conv2d_single(x: Value, weight: Value, bias: Value, stride: int = 1, padding: int = 0) -> Value:
     """
@@ -133,7 +132,7 @@ def conv2d_single(x: Value, weight: Value, bias: Value, stride: int = 1, padding
     weight:  (C_out, C_in, k, k)  Value
     bias:    (C_out,)        Value
     """
-
+    
     C_out, C_in, kH, kW = weight.data.shape
     assert kH == kW
     k = kH
