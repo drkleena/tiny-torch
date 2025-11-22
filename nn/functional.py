@@ -6,7 +6,7 @@ softmax, and loss functions.
 """
 
 from autograd.engine import Value
-
+import numpy as np
 
 def softmax(logits: Value, axis=-1):
     """
@@ -81,3 +81,82 @@ def binary_cross_entropy(pred: Value, target: Value, eps=1e-7) -> Value:
     term1 = target * pred_safe.log()
     term2 = (1 - target) * (1 - pred_safe).log()
     return -(term1 + term2).mean()
+
+def im2col(X: Value, kernel_size, stride=1, padding=0):
+    """
+    X: Value with data.shape (C, H, W)
+    padding: int, symmetric zero-padding on H and W
+    """
+    k = kernel_size
+
+    # 1) optionally pad
+    if padding > 0:
+        Xp = X.pad(padding, padding)   # (C, H+2p, W+2p)
+    else:
+        Xp = X
+
+    C, xH, xW = Xp.data.shape
+
+    # 2) output spatial dims
+    steps_y = (xH - k) // stride + 1
+    steps_x = (xW - k) // stride + 1
+
+    # 3) coordinate grid (numpy-only, fine)
+    y_coords, x_coords = np.meshgrid(
+        np.arange(steps_y),
+        np.arange(steps_x),
+        indexing='ij'
+    )
+
+    y_idx = y_coords[:, :, None, None] * stride + np.arange(k)[None, None, :, None]
+    x_idx = x_coords[:, :, None, None] * stride + np.arange(k)[None, None, None, :]
+
+    # 4) slice through Value (advanced indexing)
+    patches = Xp[:, y_idx, x_idx]  # (C, Sy, Sx, k, k)
+
+    # 5) transpose to (Sy, Sx, C, k, k)
+    patches_transpose = patches.transpose(axes=(1, 2, 0, 3, 4))
+
+    num_patches = steps_y * steps_x        # Sy * Sx
+    patch_area = k * k * C                 # C*k*k
+
+    # 6) flatten patches → (num_patches, patch_area)
+    patches_flat = patches_transpose.reshape((num_patches, patch_area))
+
+    # 7) final cols → (patch_area, num_patches)
+    patches_col = patches_flat.T
+    return patches_col
+
+def conv2d_single(x: Value, weight: Value, bias: Value, stride: int = 1, padding: int = 0) -> Value:
+    """
+    x:       (C_in, H, W)    Value
+    weight:  (C_out, C_in, k, k)  Value
+    bias:    (C_out,)        Value
+    """
+
+    C_out, C_in, kH, kW = weight.data.shape
+    assert kH == kW
+    k = kH
+
+    # step 1) im2col on input: (C_in*k*k, H_out*W_out)
+    cols = im2col(x, kernel_size=k, stride=stride, padding=padding)
+
+    # step 2) reshape weights: (C_out, C_in*k*k)
+    W_mat = weight.reshape((C_out, C_in * k * k))
+    
+    # step 3) matmul
+    out_cols = W_mat @ cols
+
+    # step 4) add bias -> broadcast (C_out, 1)
+    out_cols = out_cols + bias.reshape((C_out, 1))
+
+    C_in_x, H, W = x.data.shape
+    assert C_in_x == C_in
+
+    H_p = H + 2 * padding
+    W_p = W + 2 * padding
+    H_out = (H_p - k) // stride + 1
+    W_out = (W_p - k) // stride + 1
+
+    out = out_cols.reshape((C_out, H_out, W_out))
+    return out
