@@ -84,10 +84,6 @@ class Value:
         other = other if isinstance(other, Value) else Value(other)
         out = Value(data=self.data + other.data, _parents=(self, other), op='+')
         
-        # def _backward():
-        #     self.grad += out.grad
-        #     other.grad += out.grad
-        
         def _backward():
             grad_self = out.grad
             grad_other = out.grad
@@ -327,6 +323,87 @@ class Value:
 
         return s / count
 
+    def transpose(self, axes=None):
+        """
+        Permute the dimensions of this Value's data.
+
+        axes: tuple of ints specifying the new order of axes.
+              If None, reverse the axes order (like numpy).
+        """
+        if axes is None:
+            axes_final = tuple(reversed(range(self.data.ndim)))
+        else:
+            axes_final = tuple(axes)
+
+        out_data = np.transpose(self.data, axes_final)
+        out = Value(out_data, _parents=(self,), op="transpose")
+
+        def _backward():
+            # inverse permutation: if axes = (2,0,1), inv_axes = (1,2,0)
+            inv_axes = np.argsort(axes_final)
+            self.grad += np.transpose(out.grad, tuple(inv_axes))
+        
+        out._backward = _backward
+        return out
+
+    @property
+    def T(self):
+        return self.transpose()
+
+    def __getitem__(self, idx):
+        out_data = self.data[idx]
+        out = Value(out_data, _parents=(self,), op="getitem")
+
+        def _backward():
+            g_full = np.zeros_like(self.data)
+            # Proper scatter-add for advanced indexing
+            """
+            np.add.at applies additive updates per index occurrence,
+            so if a location appears multiple times in idx, it gets incremented multiple times.
+            """
+            np.add.at(g_full, idx, out.grad)
+            self.grad += g_full
+
+        out._backward = _backward
+        return out
+
+    @staticmethod
+    def concat(values, axis=0):
+        """
+        Concatenate a list of Value tensors along a given axis.
+        All non-concat dimensions must match (like np.concatenate).
+        """
+        datas = [v.data for v in values]
+        out_data = np.concatenate(datas, axis=axis)
+
+        out = Value(out_data, _parents=tuple(values), op="concat")
+
+        def _backward():
+            # sizes along the concat axis for each input
+            sizes = [v.data.shape[axis] for v in values]
+            # boundaries to split out.grad
+            offsets = np.cumsum(sizes)[:-1]
+
+            # split incoming gradient along the same axis
+            grads = np.split(out.grad, offsets, axis=axis)
+
+            # route each chunk to its corresponding parent
+            for v, g in zip(values, grads):
+                v.grad += g
+
+        out._backward = _backward
+
+        return out
+
+    def reshape(self, new_shape):
+        out_data = np.reshape(self.data, new_shape)
+        out = Value(out_data, _parents=(self,), op="reshape")
+
+        def _backward():
+            self.grad += np.reshape(out.grad, self.data.shape)
+
+        out._backward = _backward
+        return out
 
     @staticmethod
     def _unbroadcast(grad, target_shape):
@@ -347,7 +424,36 @@ class Value:
                 g = g.sum(axis=axis, keepdims=True)
     
         return g
-        
+    
+
+    def pad(self, pad_h: int, pad_w: int):
+        """
+        Zero-pad a (C, H, W) tensor along H and W.
+        pad_h, pad_w: number of zeros on both sides (top/bottom, left/right).
+        """
+
+        C, H, W = self.data.shape
+
+        pad_width = (
+            (0, 0),          # C
+            (pad_h, pad_h),  # H
+            (pad_w, pad_w),  # W
+        )
+
+        out_data = np.pad(self.data, pad_width, mode='constant', constant_values=0.0)
+        out = Value(out_data, _parents=(self,), op="pad")        
+            
+        def _backward():
+            if pad_h == 0 and pad_w == 0:
+                # just send the grads on their way back
+                self.grad += out.grad
+            else:
+                # unpad the guy
+                grad_unpad = out.grad[:, pad_h: H + pad_h, pad_w: W + pad_w]
+                self.grad += grad_unpad
+        out._backward = _backward
+        return out
+
     def __len__(self):
         return len(self.data)
     
