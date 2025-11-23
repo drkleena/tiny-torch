@@ -1,12 +1,6 @@
-"""
-Tiny Micro Torch - A minimal, educational automatic differentiation engine and neural network library.
-"""
+from autograd import engine
+from nn import functional, modules
+from optim import SGD, Adam
 
-# Import main components to make them available at the package level
-from .autograd import *
-from .nn import *
-from .optim import *
-from .data import *
-from .reporters import *
 
-__version__ = "0.1.0"
+__all__ = ["engine", "functional", "modules"]

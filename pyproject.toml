@@ -11,6 +11,7 @@ dependencies = [
     "tqdm>=4.66.0",
     "matplotlib>=3.8.0",
     "wandb>=0.23.0",
+    "pytest>=9.0.1",
 ]
 
 [tool.setuptools]
