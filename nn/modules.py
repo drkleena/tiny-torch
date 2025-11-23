@@ -7,7 +7,7 @@ parameters (weights and biases).
 
 import numpy as np
 from autograd.engine import Value
-from .functional import sigmoid, conv2d_single
+from .functional import sigmoid, conv2d, max_pool2d
 
 class Linear:
     """
@@ -46,7 +46,6 @@ class Linear:
         Returns:
             Output Value with shape (B, out_features)
         """
-  
         # x: (B, in_features)
         out = x @ self.W + self.b  # (B, out_features)
 
@@ -113,9 +112,7 @@ class Conv2D:
         return [self.W, self.b]
     
     def __call__(self, x: Value) -> Value:
-        out = conv2d_single(x, self.W, self.b, stride=self.stride, padding=self.padding)
-        # --- one-line hotfix ---
-        out = out.reshape((1, *out.data.shape))
+        out = conv2d(x, self.W, self.b, stride=self.stride, padding=self.padding)
         # Apply activation if requested
         if self.activation == "relu":
             out = out.relu()
@@ -141,6 +138,17 @@ class Flatten:
         else:
             # already flat, do nothing
             return x
+
+class MaxPool2D:
+    """
+    Max pooling layer.
+    """
+    def __init__(self, pool_size, stride=1):
+        self.pool_size = pool_size
+        self.stride = stride
+    
+    def __call__(self, x: Value) -> Value:
+        return max_pool2d(x, self.pool_size, self.stride)
 
 
 class Network:
