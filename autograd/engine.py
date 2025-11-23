@@ -470,6 +470,31 @@ class Value:
         out._backward = _backward
         return out
 
+    def max(self, axis=None, keepdims=False):
+        """
+        Max reduction along axis with proper gradient routing.
+        Gradient flows only to the maximum element(s).
+        """
+        out_data = np.max(self.data, axis=axis, keepdims=keepdims)
+        out = Value(out_data, _parents=(self,), op="max")
+
+        def _backward():
+            # Create mask where input equals max values
+            # Need to broadcast out_data to match self.data shape
+            if keepdims:
+                mask = (self.data == out_data)
+                out_grad_expanded = out.grad
+            else:
+                max_expanded = np.max(self.data, axis=axis, keepdims=True)
+                mask = (self.data == max_expanded)
+                out_grad_expanded = np.reshape(out.grad, max_expanded.shape)
+
+            # Broadcast and apply mask
+            self.grad += mask * np.broadcast_to(out_grad_expanded, self.data.shape)
+
+        out._backward = _backward
+        return out
+
     def __len__(self):
         return len(self.data)
     
