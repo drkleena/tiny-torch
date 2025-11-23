@@ -14,7 +14,7 @@ The model is a simple feedforward network with:
 import numpy as np
 from tqdm import tqdm
 
-from autograd import Value
+from autograd import Tensor
 from nn import Network, Linear, cross_entropy
 from optim import SGD
 from data import load_mnist
@@ -77,9 +77,9 @@ def train_mnist(epochs=60, batch_size=1000, lr=0.1, reporter=None):
             X_batch = X_train_shuffled[start:end]
             y_batch = y_train_shuffled[start:end]
 
-            # Wrap in Value
-            X_batch = Value(X_batch)
-            y_batch = Value(y_batch)
+            # Wrap in Tensor
+            X_batch = Tensor(X_batch)
+            y_batch = Tensor(y_batch)
 
             # Forward pass
             logits = model(X_batch)
@@ -145,7 +145,7 @@ def evaluate_mnist(model, X_test, y_test, batch_size=1000, reporter=None, split=
         start = batch_idx * batch_size
         end = min(start + batch_size, n_samples)
 
-        X_batch = Value(X_test[start:end])
+        X_batch = Tensor(X_test[start:end])
         y_batch = y_test[start:end]
 
         # Forward pass

@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 import wandb
 
-from autograd import Value
+from autograd import Tensor
 from nn import Network, Linear, mse, binary_cross_entropy
 from optim import SGD, Adam
 from data import load_mnist
@@ -64,8 +64,8 @@ def train_autoencoder(epochs=60, batch_size=1000, lr=0.1, reporter=None):
             # Get batch
             X_batch = X_train_shuffled[start:end]
 
-            # Wrap in Value
-            X_batch = Value(X_batch)
+            # Wrap in Tensor
+            X_batch = Tensor(X_batch)
 
             # Forward pass
             reconstructed = model(X_batch)
@@ -151,7 +151,7 @@ def evaluate_autoencoder(model, X_test, batch_size=1000, reporter=None, split="t
         start = batch_idx * batch_size
         end = min(start + batch_size, n_samples)
 
-        X_batch = Value(X_test[start:end])
+        X_batch = Tensor(X_test[start:end])
 
         # Forward pass
         reconstructed = model(X_batch)

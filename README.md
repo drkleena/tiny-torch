@@ -7,7 +7,7 @@ A minimal, educational implementation of an automatic differentiation engine and
 ```
 tiny-micro-torch/
    autograd/                # Autograd engine (core differentiation)
-         engine.py           # Value class with tensor operations and backward()
+         engine.py           # Tensor class with tensor operations and backward()
          __init__.py
    nn/                      # Neural network modules
       modules.py           # Linear, Conv2D, MaxPool2D, Flatten, Network
@@ -35,7 +35,7 @@ tiny-micro-torch/
 ## Features
 
 ### Autograd Engine (`autograd/engine.py`)
-- **Value class**: Wraps NumPy arrays with automatic differentiation
+- **Tensor class**: Wraps NumPy arrays with automatic differentiation
 - **Operations**: `+`, `-`, `*`, `/`, `**`, `@` (matmul)
 - **Activations**: `tanh()`, `relu()`, `exp()`, `log()`, `sigmoid()`
 - **Reductions**: `sum()`, `mean()`, `max()`
@@ -71,7 +71,7 @@ tiny-micro-torch/
 ### Training a Neural Network on MNIST
 
 ```python
-from autograd import Value
+from autograd import Tensor
 from nn import Network, Linear, cross_entropy
 from optim import SGD
 from data import load_mnist
@@ -92,8 +92,8 @@ optimizer = SGD(model.parameters(), lr=0.1)
 # Training loop
 for epoch in range(10):
     # Get batch (simplified)
-    X_batch = Value(X_train[:1000])
-    y_batch = Value(y_train[:1000])
+    X_batch = Tensor(X_train[:1000])
+    y_batch = Tensor(y_train[:1000])
 
     # Forward pass
     logits = model(X_batch)
@@ -112,7 +112,7 @@ for epoch in range(10):
 ### Training a CNN on MNIST
 
 ```python
-from autograd import Value
+from autograd import Tensor
 from nn import Network, Conv2D, MaxPool2D, Flatten, Linear, cross_entropy
 from optim import Adam
 from data import load_mnist
@@ -163,7 +163,7 @@ This project follows a clean separation between:
 
 1. **Engine layer** (`autograd/`): Pure autodiff engine
    - No knowledge of neural networks or optimizers
-   - Just Value nodes, operations, and backward propagation
+   - Just Tensor nodes, operations, and backward propagation
 
 2. **Library layer** (`nn/`, `optim/`): PyTorch-like user API
    - Modules, layers, loss functions

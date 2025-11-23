@@ -5,42 +5,42 @@ This module contains stateless operations like activation functions,
 softmax, and loss functions.
 """
 
-from autograd.engine import Value
+from autograd.engine import Tensor
 import numpy as np
 
-def softmax(logits: Value, axis=-1):
+def softmax(logits: Tensor, axis=-1):
     """
     Compute softmax activation over the specified axis.
 
     Args:
-        logits: Value with shape (B, C) or any shape where softmax is computed along axis
+        logits: Tensor with shape (B, C) or any shape where softmax is computed along axis
         axis: Axis along which to compute softmax (default: -1, last axis)
 
     Returns:
-        Value with same shape as logits, normalized probabilities
+        Tensor with same shape as logits, normalized probabilities
 
     Example:
-        >>> logits = Value([[1.0, 2.0, 3.0]])
+        >>> logits = Tensor([[1.0, 2.0, 3.0]])
         >>> probs = softmax(logits)  # Row-wise softmax
     """
     exps = logits.exp()
     sum_exps = exps.sum(axis=axis, keepdims=True)
     return exps / sum_exps
 
-def cross_entropy(logits: Value, targets_one_hot: Value):
+def cross_entropy(logits: Tensor, targets_one_hot: Tensor):
     """
     Compute cross-entropy loss between logits and one-hot targets.
 
     Args:
-        logits: Value with shape (B, C) - raw model outputs (before softmax)
-        targets_one_hot: Value with shape (B, C) - one-hot encoded labels
+        logits: Tensor with shape (B, C) - raw model outputs (before softmax)
+        targets_one_hot: Tensor with shape (B, C) - one-hot encoded labels
 
     Returns:
-        Scalar Value representing the mean cross-entropy loss over the batch
+        Scalar Tensor representing the mean cross-entropy loss over the batch
 
     Example:
-        >>> logits = Value([[0.1, 0.2, 0.7]])
-        >>> targets = Value([[0.0, 0.0, 1.0]])  # Class 2 is correct
+        >>> logits = Tensor([[0.1, 0.2, 0.7]])
+        >>> targets = Tensor([[0.0, 0.0, 1.0]])  # Class 2 is correct
         >>> loss = cross_entropy(logits, targets)
     """
     probs = softmax(logits)  # (B, C)
@@ -50,48 +50,48 @@ def cross_entropy(logits: Value, targets_one_hot: Value):
 
     return loss_batch_average
 
-def mse(predictions: Value, targets: Value):
+def mse(predictions: Tensor, targets: Tensor):
     """
     Compute mean squared error between predictions and targets.
 
     Args:
-        predictions: Value with shape (B, ...) - model predictions
-        targets: Value with shape (B, ...) - ground truth values
+        predictions: Tensor with shape (B, ...) - model predictions
+        targets: Tensor with shape (B, ...) - ground truth values
 
     Returns:
-        Scalar Value representing the mean squared error over the batch
+        Scalar Tensor representing the mean squared error over the batch
     """
     squared_errors = (predictions - targets) ** 2
     return squared_errors.mean()
 
-def sigmoid(x: Value):
+def sigmoid(x: Tensor):
     """
     Compute sigmoid activation.
 
     Args:
-        x: Value to apply sigmoid to
+        x: Tensor to apply sigmoid to
 
     Returns:
-        Value with sigmoid applied: 1 / (1 + exp(-x))
+        Tensor with sigmoid applied: 1 / (1 + exp(-x))
     """
     return 1.0 / (1.0 + (-x).exp())
 
-def binary_cross_entropy(pred: Value, target: Value, eps=1e-7) -> Value:
+def binary_cross_entropy(pred: Tensor, target: Tensor, eps=1e-7) -> Tensor:
     pred_safe = pred.clip(eps, 1.0 - eps)
     term1 = target * pred_safe.log()
     term2 = (1 - target) * (1 - pred_safe).log()
     return -(term1 + term2).mean()
 
-def im2col(X: Value, kernel_size, stride=1, padding=0):
+def im2col(X: Tensor, kernel_size, stride=1, padding=0):
     """
-    X: Value with data.shape (N, C, H, W)
+    X: Tensor with data.shape (N, C, H, W)
     padding: int, symmetric zero-padding on H and W
     """
     k = kernel_size
 
     # 1) optionally pad
     if padding > 0:
-        Xps = Value.stack([ input.pad(padding, padding) for input in X ])   # (B, C, H+2p, W+2p)
+        Xps = Tensor.stack([ input.pad(padding, padding) for input in X ])   # (B, C, H+2p, W+2p)
     else:
         Xps = X
 
@@ -126,13 +126,13 @@ def im2col(X: Value, kernel_size, stride=1, padding=0):
     cols = patches_flat.transpose((0, 2, 1))
     return cols
 
-def im2patches(X: Value, kernel_size, stride=1, padding=0) -> Value:
+def im2patches(X: Tensor, kernel_size, stride=1, padding=0) -> Tensor:
     """
     Extracts patches from an image.
 
     Parameters
     ----------
-    X : Value
+    X : Tensor
         Input image with shape (N, C, H, W), where N is the batch size, C is the number of channels,
         H is the height, and W is the width.
     kernel_size : int or tuple of two ints
@@ -146,7 +146,7 @@ def im2patches(X: Value, kernel_size, stride=1, padding=0) -> Value:
 
     Returns
     -------
-    Value
+    Tensor
         Patches extracted from the input image with shape (N, C*k*k, Sy*Sx), where N is the batch size,
         C is the number of channels, k is the size of the kernel, Sy is the number of rows of patches,
         and Sx is the number of columns of patches.
@@ -155,7 +155,7 @@ def im2patches(X: Value, kernel_size, stride=1, padding=0) -> Value:
 
     # 1) optionally pad
     if padding > 0:
-        Xps = Value.stack([ input.pad(padding, padding) for input in X ])   # (B, C, H+2p, W+2p)
+        Xps = Tensor.stack([ input.pad(padding, padding) for input in X ])   # (B, C, H+2p, W+2p)
     else:
         Xps = X
 
@@ -178,14 +178,14 @@ def im2patches(X: Value, kernel_size, stride=1, padding=0) -> Value:
     patches = Xps[:, :, y_idx, x_idx] # (B, C, Sy, Sx, k, k)
     return patches    
 
-def max_pool2d(x: Value, pool_size, stride=1, padding=0):
+def max_pool2d(x: Tensor, pool_size, stride=1, padding=0):
     B, C, H, W = x.data.shape
     pool_h = pool_w = pool_size
     
     H_out = (H - pool_h) // 2
     W_out = (W - pool_w) // 2
 
-    # X: Value, kernel_size, stride=1, padding=0
+    # X: Tensor, kernel_size, stride=1, padding=0
     patches = im2patches(x, pool_size, stride, padding)
     
     # patches shape : (2, 1, 2, 2, 2, 2) (B, C, Sy, Sx, k, k)
@@ -199,7 +199,7 @@ def max_pool2d(x: Value, pool_size, stride=1, padding=0):
     
     return max_vals
 
-def conv2d(x: Value, weight: Value, bias: Value, stride: int = 1, padding: int = 0) -> Value:
+def conv2d(x: Tensor, weight: Tensor, bias: Tensor, stride: int = 1, padding: int = 0) -> Tensor:
     """
     x:       (B, C_in, H, W)
     weight:  (C_out, C_in, k, k)

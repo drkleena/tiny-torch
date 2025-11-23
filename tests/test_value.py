@@ -1,11 +1,11 @@
 """
-Comprehensive tests for the Value class and all its primitives.
+Comprehensive tests for the Tensor class and all its primitives.
 Tests both forward computation and gradient backpropagation.
 """
 
 import numpy as np
 import pytest
-from autograd.engine import Value
+from autograd.engine import Tensor
 
 
 # ============================================================================
@@ -40,7 +40,7 @@ def numerical_gradient(func, x, eps=1e-5):
     return grad
 
 
-def check_gradient(val: Value, expected_grad: np.ndarray, rtol=1e-5, atol=1e-5):
+def check_gradient(val: Tensor, expected_grad: np.ndarray, rtol=1e-5, atol=1e-5):
     """Helper to check if gradient matches expected."""
     assert np.allclose(val.grad, expected_grad, rtol=rtol, atol=atol), \
         f"Gradient mismatch:\nExpected:\n{expected_grad}\nGot:\n{val.grad}"
@@ -52,8 +52,8 @@ def check_gradient(val: Value, expected_grad: np.ndarray, rtol=1e-5, atol=1e-5):
 
 def test_add_forward():
     """Test addition forward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
-    b = Value([[5.0, 6.0], [7.0, 8.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
+    b = Tensor([[5.0, 6.0], [7.0, 8.0]])
     c = a + b
 
     expected = np.array([[6.0, 8.0], [10.0, 12.0]])
@@ -62,8 +62,8 @@ def test_add_forward():
 
 def test_add_backward():
     """Test addition backward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
-    b = Value([[5.0, 6.0], [7.0, 8.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
+    b = Tensor([[5.0, 6.0], [7.0, 8.0]])
     c = a + b
     loss = c.sum()
 
@@ -75,8 +75,8 @@ def test_add_backward():
 
 
 def test_add_scalar():
-    """Test adding scalar to Value."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    """Test adding scalar to Tensor."""
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a + 5.0
 
     expected = np.array([[6.0, 7.0], [8.0, 9.0]])
@@ -84,8 +84,8 @@ def test_add_scalar():
 
 
 def test_radd():
-    """Test reverse addition (scalar + Value)."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    """Test reverse addition (scalar + Tensor)."""
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = 5.0 + a
 
     expected = np.array([[6.0, 7.0], [8.0, 9.0]])
@@ -94,8 +94,8 @@ def test_radd():
 
 def test_add_broadcasting():
     """Test addition with broadcasting."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])  # (2, 2)
-    b = Value([[10.0, 20.0]])  # (1, 2)
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])  # (2, 2)
+    b = Tensor([[10.0, 20.0]])  # (1, 2)
     c = a + b
 
     expected = np.array([[11.0, 22.0], [13.0, 24.0]])
@@ -113,8 +113,8 @@ def test_add_broadcasting():
 
 def test_mul_forward():
     """Test multiplication forward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
-    b = Value([[2.0, 3.0], [4.0, 5.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
+    b = Tensor([[2.0, 3.0], [4.0, 5.0]])
     c = a * b
 
     expected = np.array([[2.0, 6.0], [12.0, 20.0]])
@@ -123,8 +123,8 @@ def test_mul_forward():
 
 def test_mul_backward():
     """Test multiplication backward pass."""
-    a = Value([[2.0, 3.0]])
-    b = Value([[4.0, 5.0]])
+    a = Tensor([[2.0, 3.0]])
+    b = Tensor([[4.0, 5.0]])
     c = a * b
     loss = c.sum()
 
@@ -138,7 +138,7 @@ def test_mul_backward():
 
 def test_rmul():
     """Test reverse multiplication."""
-    a = Value([[2.0, 3.0]])
+    a = Tensor([[2.0, 3.0]])
     b = 5.0 * a
 
     expected = np.array([[10.0, 15.0]])
@@ -147,7 +147,7 @@ def test_rmul():
 
 def test_neg():
     """Test negation."""
-    a = Value([[1.0, -2.0], [3.0, -4.0]])
+    a = Tensor([[1.0, -2.0], [3.0, -4.0]])
     b = -a
 
     expected = np.array([[-1.0, 2.0], [-3.0, 4.0]])
@@ -161,8 +161,8 @@ def test_neg():
 
 def test_sub():
     """Test subtraction."""
-    a = Value([[5.0, 6.0]])
-    b = Value([[2.0, 3.0]])
+    a = Tensor([[5.0, 6.0]])
+    b = Tensor([[2.0, 3.0]])
     c = a - b
 
     expected = np.array([[3.0, 3.0]])
@@ -177,7 +177,7 @@ def test_sub():
 
 def test_rsub():
     """Test reverse subtraction."""
-    a = Value([[2.0, 3.0]])
+    a = Tensor([[2.0, 3.0]])
     b = 10.0 - a
 
     expected = np.array([[8.0, 7.0]])
@@ -186,7 +186,7 @@ def test_rsub():
 
 def test_pow():
     """Test power operation."""
-    a = Value([[2.0, 3.0], [4.0, 5.0]])
+    a = Tensor([[2.0, 3.0], [4.0, 5.0]])
     b = a ** 2
 
     expected = np.array([[4.0, 9.0], [16.0, 25.0]])
@@ -200,7 +200,7 @@ def test_pow():
 
 def test_pow_fractional():
     """Test fractional power."""
-    a = Value([[4.0, 9.0, 16.0]])
+    a = Tensor([[4.0, 9.0, 16.0]])
     b = a ** 0.5
 
     expected = np.array([[2.0, 3.0, 4.0]])
@@ -209,8 +209,8 @@ def test_pow_fractional():
 
 def test_truediv():
     """Test division."""
-    a = Value([[6.0, 8.0]])
-    b = Value([[2.0, 4.0]])
+    a = Tensor([[6.0, 8.0]])
+    b = Tensor([[2.0, 4.0]])
     c = a / b
 
     expected = np.array([[3.0, 2.0]])
@@ -227,7 +227,7 @@ def test_truediv():
 
 def test_rtruediv():
     """Test reverse division."""
-    a = Value([[2.0, 4.0]])
+    a = Tensor([[2.0, 4.0]])
     b = 12.0 / a
 
     expected = np.array([[6.0, 3.0]])
@@ -240,8 +240,8 @@ def test_rtruediv():
 
 def test_matmul_forward():
     """Test matrix multiplication forward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])  # (2, 2)
-    b = Value([[5.0, 6.0], [7.0, 8.0]])  # (2, 2)
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])  # (2, 2)
+    b = Tensor([[5.0, 6.0], [7.0, 8.0]])  # (2, 2)
     c = a @ b
 
     expected = np.array([[19.0, 22.0], [43.0, 50.0]])
@@ -250,8 +250,8 @@ def test_matmul_forward():
 
 def test_matmul_backward():
     """Test matrix multiplication backward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
-    b = Value([[5.0, 6.0], [7.0, 8.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
+    b = Tensor([[5.0, 6.0], [7.0, 8.0]])
     c = a @ b
     loss = c.sum()
 
@@ -269,8 +269,8 @@ def test_matmul_backward():
 def test_matmul_batch():
     """Test batched matrix multiplication."""
     # Batch of 3, each (2, 3) @ (3, 4)
-    a = Value(np.random.randn(2, 3))
-    b = Value(np.random.randn(3, 4))
+    a = Tensor(np.random.randn(2, 3))
+    b = Tensor(np.random.randn(3, 4))
     c = a @ b
 
     assert c.data.shape == (2, 4)
@@ -284,7 +284,7 @@ def test_matmul_batch():
 
 def test_relu_forward():
     """Test ReLU forward pass."""
-    a = Value([[-2.0, -1.0, 0.0, 1.0, 2.0]])
+    a = Tensor([[-2.0, -1.0, 0.0, 1.0, 2.0]])
     b = a.relu()
 
     expected = np.array([[0.0, 0.0, 0.0, 1.0, 2.0]])
@@ -293,7 +293,7 @@ def test_relu_forward():
 
 def test_relu_backward():
     """Test ReLU backward pass."""
-    a = Value([[-2.0, -1.0, 0.0, 1.0, 2.0]])
+    a = Tensor([[-2.0, -1.0, 0.0, 1.0, 2.0]])
     b = a.relu()
     loss = b.sum()
 
@@ -306,7 +306,7 @@ def test_relu_backward():
 
 def test_tanh_forward():
     """Test tanh forward pass."""
-    a = Value([[0.0, 1.0, -1.0]])
+    a = Tensor([[0.0, 1.0, -1.0]])
     b = a.tanh()
 
     expected = np.tanh(a.data)
@@ -316,7 +316,7 @@ def test_tanh_forward():
 def test_tanh_backward():
     """Test tanh backward pass."""
     a_data = np.array([[0.5, 1.0]])
-    a = Value(a_data)
+    a = Tensor(a_data)
     b = a.tanh()
     loss = b.sum()
 
@@ -330,7 +330,7 @@ def test_tanh_backward():
 
 def test_exp_forward():
     """Test exp forward pass."""
-    a = Value([[0.0, 1.0, 2.0]])
+    a = Tensor([[0.0, 1.0, 2.0]])
     b = a.exp()
 
     expected = np.exp(a.data)
@@ -340,7 +340,7 @@ def test_exp_forward():
 def test_exp_backward():
     """Test exp backward pass."""
     a_data = np.array([[1.0, 2.0]])
-    a = Value(a_data)
+    a = Tensor(a_data)
     b = a.exp()
     loss = b.sum()
 
@@ -353,7 +353,7 @@ def test_exp_backward():
 
 def test_log_forward():
     """Test log forward pass."""
-    a = Value([[1.0, 2.0, np.e]])
+    a = Tensor([[1.0, 2.0, np.e]])
     b = a.log()
 
     expected = np.log(a.data)
@@ -363,7 +363,7 @@ def test_log_forward():
 def test_log_backward():
     """Test log backward pass."""
     a_data = np.array([[1.0, 2.0, 4.0]])
-    a = Value(a_data)
+    a = Tensor(a_data)
     b = a.log()
     loss = b.sum()
 
@@ -380,7 +380,7 @@ def test_log_backward():
 
 def test_sum_all():
     """Test sum over all elements."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.sum()
 
     assert np.allclose(b.data, 10.0)
@@ -392,7 +392,7 @@ def test_sum_all():
 
 def test_sum_axis0():
     """Test sum over axis 0."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.sum(axis=0)
 
     expected = np.array([4.0, 6.0])
@@ -406,7 +406,7 @@ def test_sum_axis0():
 
 def test_sum_axis1_keepdims():
     """Test sum with keepdims."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.sum(axis=1, keepdims=True)
 
     expected = np.array([[3.0], [7.0]])
@@ -416,7 +416,7 @@ def test_sum_axis1_keepdims():
 
 def test_mean_all():
     """Test mean over all elements."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.mean()
 
     assert np.allclose(b.data, 2.5)
@@ -429,7 +429,7 @@ def test_mean_all():
 
 def test_mean_axis():
     """Test mean over specific axis."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.mean(axis=0)
 
     expected = np.array([2.0, 3.0])
@@ -438,7 +438,7 @@ def test_mean_axis():
 
 def test_max_all():
     """Test max over all elements."""
-    a = Value([[1.0, 5.0], [3.0, 2.0]])
+    a = Tensor([[1.0, 5.0], [3.0, 2.0]])
     b = a.max()
 
     assert np.allclose(b.data, 5.0)
@@ -451,7 +451,7 @@ def test_max_all():
 
 def test_max_axis():
     """Test max over specific axis."""
-    a = Value([[1.0, 5.0], [3.0, 2.0]])
+    a = Tensor([[1.0, 5.0], [3.0, 2.0]])
     b = a.max(axis=1)
 
     expected = np.array([5.0, 3.0])
@@ -466,7 +466,7 @@ def test_max_axis():
 
 def test_max_tied_values():
     """Test max with tied values (gradient should be split)."""
-    a = Value([[2.0, 2.0, 1.0]])
+    a = Tensor([[2.0, 2.0, 1.0]])
     b = a.max(axis=1)
 
     assert np.allclose(b.data, 2.0)
@@ -483,7 +483,7 @@ def test_max_tied_values():
 
 def test_reshape_forward():
     """Test reshape forward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.reshape((4, 1))
 
     expected = np.array([[1.0], [2.0], [3.0], [4.0]])
@@ -492,7 +492,7 @@ def test_reshape_forward():
 
 def test_reshape_backward():
     """Test reshape backward pass."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.reshape((4, 1))
     loss = b.sum()
 
@@ -502,7 +502,7 @@ def test_reshape_backward():
 
 def test_transpose_2d():
     """Test 2D transpose."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.transpose()
 
     expected = np.array([[1.0, 3.0], [2.0, 4.0]])
@@ -516,7 +516,7 @@ def test_transpose_2d():
 
 def test_transpose_property():
     """Test .T property."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a.T
 
     expected = a.transpose().data
@@ -525,7 +525,7 @@ def test_transpose_property():
 
 def test_transpose_3d():
     """Test 3D transpose with axes."""
-    a = Value(np.arange(24).reshape(2, 3, 4))
+    a = Tensor(np.arange(24).reshape(2, 3, 4))
     b = a.transpose((2, 0, 1))  # (4, 2, 3)
 
     expected = np.transpose(a.data, (2, 0, 1))
@@ -536,7 +536,7 @@ def test_transpose_3d():
 def test_pad_forward():
     """Test padding forward pass."""
     # Create a (C, H, W) = (1, 2, 2) tensor
-    a = Value([
+    a = Tensor([
         [
             [1.0, 2.0],
             [3.0, 4.0]
@@ -563,7 +563,7 @@ def test_pad_backward():
             [3.0, 4.0]
         ]
     ])  # (1, 2, 2)
-    a = Value(a_data)
+    a = Tensor(a_data)
 
     b = a.pad(1, 1)
     loss = b.sum()
@@ -579,7 +579,7 @@ def test_pad_backward():
 
 def test_getitem_basic():
     """Test basic indexing."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     b = a[0]
 
     expected = np.array([1.0, 2.0])
@@ -588,7 +588,7 @@ def test_getitem_basic():
 
 def test_getitem_slice():
     """Test slice indexing."""
-    a = Value([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    a = Tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     b = a[:, 1:]
 
     expected = np.array([[2.0, 3.0], [5.0, 6.0]])
@@ -597,7 +597,7 @@ def test_getitem_slice():
 
 def test_getitem_backward():
     """Test indexing backward pass."""
-    a = Value([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    a = Tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     b = a[:, 1:]
     loss = b.sum()
 
@@ -610,9 +610,9 @@ def test_getitem_backward():
 
 def test_stack_basic():
     """Test stacking Values."""
-    a = Value([[1.0, 2.0]])
-    b = Value([[3.0, 4.0]])
-    c = Value.stack([a, b], axis=0)
+    a = Tensor([[1.0, 2.0]])
+    b = Tensor([[3.0, 4.0]])
+    c = Tensor.stack([a, b], axis=0)
 
     # Stack adds a new dimension, so (1,2) stacked along axis 0 becomes (2,1,2)
     expected = np.array([[[1.0, 2.0]], [[3.0, 4.0]]])
@@ -622,9 +622,9 @@ def test_stack_basic():
 
 def test_stack_backward():
     """Test stack backward pass."""
-    a = Value([[1.0, 2.0]])
-    b = Value([[3.0, 4.0]])
-    c = Value.stack([a, b], axis=0)
+    a = Tensor([[1.0, 2.0]])
+    b = Tensor([[3.0, 4.0]])
+    c = Tensor.stack([a, b], axis=0)
     loss = c.sum()
 
     loss.backward()
@@ -635,9 +635,9 @@ def test_stack_backward():
 
 def test_concat_basic():
     """Test concatenation."""
-    a = Value([[1.0, 2.0]])
-    b = Value([[3.0, 4.0]])
-    c = Value.concat([a, b], axis=0)
+    a = Tensor([[1.0, 2.0]])
+    b = Tensor([[3.0, 4.0]])
+    c = Tensor.concat([a, b], axis=0)
 
     expected = np.array([[1.0, 2.0], [3.0, 4.0]])
     assert np.allclose(c.data, expected)
@@ -645,9 +645,9 @@ def test_concat_basic():
 
 def test_concat_axis1():
     """Test concatenation along axis 1."""
-    a = Value([[1.0], [2.0]])
-    b = Value([[3.0], [4.0]])
-    c = Value.concat([a, b], axis=1)
+    a = Tensor([[1.0], [2.0]])
+    b = Tensor([[3.0], [4.0]])
+    c = Tensor.concat([a, b], axis=1)
 
     expected = np.array([[1.0, 3.0], [2.0, 4.0]])
     assert np.allclose(c.data, expected)
@@ -655,9 +655,9 @@ def test_concat_axis1():
 
 def test_concat_backward():
     """Test concat backward pass."""
-    a = Value([[1.0, 2.0]])
-    b = Value([[3.0, 4.0]])
-    c = Value.concat([a, b], axis=0)
+    a = Tensor([[1.0, 2.0]])
+    b = Tensor([[3.0, 4.0]])
+    c = Tensor.concat([a, b], axis=0)
     loss = c.sum()
 
     loss.backward()
@@ -672,7 +672,7 @@ def test_concat_backward():
 
 def test_gt():
     """Test greater-than comparison."""
-    a = Value([[1.0, 2.0, 3.0]])
+    a = Tensor([[1.0, 2.0, 3.0]])
     b = a > 2.0
 
     expected = np.array([[0.0, 0.0, 1.0]])
@@ -681,7 +681,7 @@ def test_gt():
 
 def test_lt():
     """Test less-than comparison."""
-    a = Value([[1.0, 2.0, 3.0]])
+    a = Tensor([[1.0, 2.0, 3.0]])
     b = a < 2.0
 
     expected = np.array([[1.0, 0.0, 0.0]])
@@ -690,7 +690,7 @@ def test_lt():
 
 def test_clip_forward():
     """Test clip forward pass."""
-    a = Value([[-2.0, 0.0, 5.0, 10.0]])
+    a = Tensor([[-2.0, 0.0, 5.0, 10.0]])
     b = a.clip(0.0, 5.0)
 
     expected = np.array([[0.0, 0.0, 5.0, 5.0]])
@@ -699,7 +699,7 @@ def test_clip_forward():
 
 def test_clip_backward():
     """Test clip backward pass (gradients flow only in valid range)."""
-    a = Value([[-2.0, 1.0, 3.0, 10.0]])
+    a = Tensor([[-2.0, 1.0, 3.0, 10.0]])
     b = a.clip(0.0, 5.0)
     loss = b.sum()
 
@@ -716,8 +716,8 @@ def test_clip_backward():
 
 def test_complex_computation_graph():
     """Test a complex computation graph with multiple operations."""
-    a = Value([[2.0, 3.0]])
-    b = Value([[4.0, 5.0]])
+    a = Tensor([[2.0, 3.0]])
+    b = Tensor([[4.0, 5.0]])
 
     # c = (a * b) + (a ** 2)
     c = (a * b) + (a ** 2)
@@ -736,7 +736,7 @@ def test_complex_computation_graph():
 
 def test_chain_of_operations():
     """Test gradient flow through a chain of operations."""
-    a = Value([[2.0]])
+    a = Tensor([[2.0]])
     b = a * 2
     c = b + 3
     d = c ** 2
@@ -752,7 +752,7 @@ def test_chain_of_operations():
 
 def test_multiple_paths_gradient_accumulation():
     """Test that gradients accumulate when variable is used multiple times."""
-    a = Value([[3.0]])
+    a = Tensor([[3.0]])
     b = a + a  # a is used twice
     loss = b.sum()
 
@@ -764,8 +764,8 @@ def test_multiple_paths_gradient_accumulation():
 
 def test_broadcasting_complex():
     """Test complex broadcasting scenario."""
-    a = Value([[1.0, 2.0, 3.0]])  # (1, 3)
-    b = Value([[1.0], [2.0]])  # (2, 1)
+    a = Tensor([[1.0, 2.0, 3.0]])  # (1, 3)
+    b = Tensor([[1.0], [2.0]])  # (2, 1)
 
     c = a * b  # Broadcasts to (2, 3)
     loss = c.sum()
@@ -787,8 +787,8 @@ def test_broadcasting_complex():
 
 def test_scalar_value():
     """Test operations on scalar Values."""
-    a = Value(5.0)
-    b = Value(3.0)
+    a = Tensor(5.0)
+    b = Tensor(3.0)
     c = a * b
 
     assert np.allclose(c.data, 15.0)
@@ -800,7 +800,7 @@ def test_scalar_value():
 
 def test_zero_gradient():
     """Test operations that should produce zero gradient."""
-    a = Value([[1.0, 2.0, 3.0]])
+    a = Tensor([[1.0, 2.0, 3.0]])
     b = a.relu()
     c = b * 0  # Multiply by zero
     loss = c.sum()
@@ -813,13 +813,13 @@ def test_zero_gradient():
 
 def test_length():
     """Test __len__ method."""
-    a = Value([[1.0, 2.0], [3.0, 4.0]])
+    a = Tensor([[1.0, 2.0], [3.0, 4.0]])
     assert len(a) == 2
 
 
 def test_repr():
     """Test __repr__ method."""
-    a = Value([[1.0, 2.0]])
+    a = Tensor([[1.0, 2.0]])
     repr_str = repr(a)
     assert "1." in repr_str and "2." in repr_str
 

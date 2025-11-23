@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from autograd import Value
+from autograd import Tensor
 from nn import Network, Linear, Conv2D, MaxPool2D, Flatten, cross_entropy
 from optim import SGD, Adam
 from data import load_mnist
@@ -60,8 +60,8 @@ def train_mnist_conv(epochs=20, batch_size=256, lr=0.01, reporter=None):
             X_batch_np = X_train_shuffled[start:end]       # (B, C=1, 28, 28)
             y_batch_np = y_train_shuffled[start:end]       # (B, 10) one-hot
 
-            X_batch = Value(X_batch_np)
-            y_batch = Value(y_batch_np)
+            X_batch = Tensor(X_batch_np)
+            y_batch = Tensor(y_batch_np)
 
             logits = model(X_batch)    # (B, 10)
             loss = cross_entropy(logits, y_batch)
@@ -116,7 +116,7 @@ def evaluate_mnist_conv(model, X_test, y_test, batch_size=512, reporter=None, sp
         X_batch_np = X_test[start:end].reshape(-1, 1, 28, 28)
         y_batch_np = y_test[start:end]
 
-        X_batch = Value(X_batch_np)
+        X_batch = Tensor(X_batch_np)
         # y_batch stays as raw numpy for argmax
         logits = model(X_batch)
 

@@ -1,15 +1,24 @@
 import numpy as np
 
-class Value:
+class Tensor:
     """
-    Value is a node in the computation graph for autograd. It holds a numpy
-    array and knows about its parents (other Values that were used to compute it).
-    It also knows how to compute the gradient w.r.t. its parents.
+    Tensor represents an n-dimensional array supporting both numerical computation
+    and automatic differentiation. It stores:
+
+    • `data`  - the underlying NumPy/CuPy array  
+    • `grad`  - the accumulated gradient  
+    • `_prev` - the parent Tensors that produced it  
+    • `_backward` - a function that computes gradients for those parents  
+
+    Each operation on Tensors creates a new Tensor node and links it into a dynamic
+    computation graph. Calling `.backward()` performs reverse-mode autodiff,
+    executing the stored `_backward` functions in topological order to populate
+    gradients throughout the graph.
     """
 
     def __init__(self, data, _parents=(), op="", label=None):
         """
-        Initialize a scalar Value node for autograd.
+        Initialize a Tensor node for autograd.
         """
         self.data = np.array(data, dtype=float)
         self.grad = np.zeros_like(self.data)
@@ -28,8 +37,8 @@ class Value:
           other.data: (D_in, D_out)
           out.data:   (B, D_out)
         """
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(self.data @ other.data, _parents=(self, other), op="@")
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        out = Tensor(self.data @ other.data, _parents=(self, other), op="@")
 
         def _backward():
             """
@@ -60,7 +69,7 @@ class Value:
 
     def sum(self, axis=None, keepdims=False):
         out_data = np.sum(self.data, axis=axis, keepdims=keepdims)
-        out = Value(out_data, _parents=(self,), op="sum")
+        out = Tensor(out_data, _parents=(self,), op="sum")
     
         def _backward():
             # upstream gradient as ndarray
@@ -81,8 +90,8 @@ class Value:
         return out
 
     def __add__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(data=self.data + other.data, _parents=(self, other), op='+')
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        out = Tensor(data=self.data + other.data, _parents=(self, other), op='+')
         
         def _backward():
             grad_self = out.grad
@@ -98,27 +107,27 @@ class Value:
 
     @staticmethod
     def _to_value(x):
-        return x if isinstance(x, Value) else Value(x)
+        return x if isinstance(x, Tensor) else Tensor(x)
 
     def __gt__(self, other):
         """
         Elementwise greater-than comparison.
-        Returns a Value whose data is a float mask of 0.0/1.0.
+        Returns a Tensor whose data is a float mask of 0.0/1.0.
         Gradient does NOT flow through this (treated as constant mask).
         """
         other = self._to_value(other)
         mask = (self.data > other.data).astype(float)
         # no parents: mask is constant w.r.t. autograd
-        return Value(mask)
+        return Tensor(mask)
 
     def __lt__(self, other):
         """
         Elementwise less-than comparison.
-        Returns a Value whose data is a float mask of 0.0/1.0.
+        Returns a Tensor whose data is a float mask of 0.0/1.0.
         """
         other = self._to_value(other)
         mask = (self.data < other.data).astype(float)
-        return Value(mask)
+        return Tensor(mask)
 
     def clip(self, min_val, max_val):
         """
@@ -127,30 +136,30 @@ class Value:
         """
 
         # Make min / max broadcastable Values
-        if not isinstance(min_val, Value):
-            min_val = Value(np.full_like(self.data, float(min_val)))
-        if not isinstance(max_val, Value):
-            max_val = Value(np.full_like(self.data, float(max_val)))
+        if not isinstance(min_val, Tensor):
+            min_val = Tensor(np.full_like(self.data, float(min_val)))
+        if not isinstance(max_val, Tensor):
+            max_val = Tensor(np.full_like(self.data, float(max_val)))
 
         # Step 1: lower bound -> max(self, min_val)
         # mask_hi = 1 where self > min_val, else 0
-        mask_hi = self > min_val                     # Value mask
-        one_hi = Value(np.ones_like(mask_hi.data))   # 1s same shape
+        mask_hi = self > min_val                     # Tensor mask
+        one_hi = Tensor(np.ones_like(mask_hi.data))   # 1s same shape
         x_hi = mask_hi * self + (one_hi - mask_hi) * min_val
 
         # Step 2: upper bound -> min(x_hi, max_val)
         # mask_lo = 1 where x_hi < max_val, else 0
         mask_lo = x_hi < max_val
-        one_lo = Value(np.ones_like(mask_lo.data))
+        one_lo = Tensor(np.ones_like(mask_lo.data))
         x_clipped = mask_lo * x_hi + (one_lo - mask_lo) * max_val
 
         return x_clipped
 
     def __mul__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
+        other = other if isinstance(other, Tensor) else Tensor(other)
 
         child_data = self.data * other.data
-        out = Value(data=child_data, _parents=(self, other), op='*')
+        out = Tensor(data=child_data, _parents=(self, other), op='*')
         
         def _backward():
             grad_self = other.data * out.grad
@@ -175,7 +184,7 @@ class Value:
 
     def __pow__(self, exponent):
         assert isinstance(exponent, (int, float))
-        out = Value(self.data ** exponent, _parents=(self,), op="**")
+        out = Tensor(self.data ** exponent, _parents=(self,), op="**")
 
         def _backward():
             self.grad += out.grad * exponent * (self.data ** (exponent - 1))
@@ -184,8 +193,8 @@ class Value:
         return out
     
     def __truediv__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(self.data / other.data, _parents=(self, other), op='/')
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        out = Tensor(self.data / other.data, _parents=(self, other), op='/')
     
         def _backward():
             # x / y
@@ -200,12 +209,12 @@ class Value:
         
     def __rtruediv__(self, other):
         # other / self
-        other = other if isinstance(other, Value) else Value(other)
+        other = other if isinstance(other, Tensor) else Tensor(other)
         return other / self
 
     def backward(self):
         """
-        Backpropagate gradients from this Value all the way through
+        Backpropagate gradients from this Tensor all the way through
         the graph of Values that produced it.
         """
         topo = []
@@ -228,7 +237,7 @@ class Value:
 
     def tanh(self):
         t = np.tanh(self.data)
-        out = Value(t, _parents = (self,), op="tanh")
+        out = Tensor(t, _parents = (self,), op="tanh")
 
         def _backward():
             
@@ -243,7 +252,7 @@ class Value:
 
     def relu(self):
         out_mask = np.maximum(0, self.data)
-        out = Value(out_mask, _parents=(self,), op="relu")
+        out = Tensor(out_mask, _parents=(self,), op="relu")
         
         def _backward():
             self.grad += (self.data > 0).astype(float) * out.grad
@@ -258,7 +267,7 @@ class Value:
         out = exp(self)
         """
         
-        out = Value(np.exp(self.data), _parents=(self, ), op="exp")
+        out = Tensor(np.exp(self.data), _parents=(self, ), op="exp")
     
         def _backward():
             """
@@ -277,7 +286,7 @@ class Value:
 
         out = log(self)
         """
-        out = Value(np.log(self.data), _parents=(self,), op="log")
+        out = Tensor(np.log(self.data), _parents=(self,), op="log")
 
         def _backward():
             """
@@ -325,7 +334,7 @@ class Value:
 
     def transpose(self, axes=None):
         """
-        Permute the dimensions of this Value's data.
+        Permute the dimensions of this Tensor's data.
 
         axes: tuple of ints specifying the new order of axes.
               If None, reverse the axes order (like numpy).
@@ -336,7 +345,7 @@ class Value:
             axes_final = tuple(axes)
 
         out_data = np.transpose(self.data, axes_final)
-        out = Value(out_data, _parents=(self,), op="transpose")
+        out = Tensor(out_data, _parents=(self,), op="transpose")
 
         def _backward():
             # inverse permutation: if axes = (2,0,1), inv_axes = (1,2,0)
@@ -352,7 +361,7 @@ class Value:
 
     def __getitem__(self, idx):
         out_data = self.data[idx]
-        out = Value(out_data, _parents=(self,), op="getitem")
+        out = Tensor(out_data, _parents=(self,), op="getitem")
 
         def _backward():
             g_full = np.zeros_like(self.data)
@@ -368,35 +377,35 @@ class Value:
         return out
 
     @staticmethod
-    def stack(values, axis=0):
-        datas = [v.data for v in values]
+    def stack(tensors, axis=0):
+        datas = [v.data for v in tensors]
         out_data = np.stack(datas, axis=axis)
-        out = Value(out_data, _parents=tuple(values), op="stack")
+        out = Tensor(out_data, _parents=tuple(tensors), op="stack")
 
         def _backward():
             # incoming grad: shape (B, C, H, W)
-            grads = np.split(out.grad, len(values), axis=axis)
+            grads = np.split(out.grad, len(tensors), axis=axis)
             grads = [g.squeeze(axis=axis) for g in grads]
-            for v, g in zip(values, grads):
+            for v, g in zip(tensors, grads):
                 v.grad += g
 
         out._backward = _backward
         return out
 
     @staticmethod
-    def concat(values, axis=0):
+    def concat(tensors, axis=0):
         """
-        Concatenate a list of Value tensors along a given axis.
+        Concatenate a list of Tensor tensors, along a given axis.
         All non-concat dimensions must match (like np.concatenate).
         """
-        datas = [v.data for v in values]
+        datas = [v.data for v in tensors]
         out_data = np.concatenate(datas, axis=axis)
 
-        out = Value(out_data, _parents=tuple(values), op="concat")
+        out = Tensor(out_data, _parents=tuple(tensors), op="concat")
 
         def _backward():
             # sizes along the concat axis for each input
-            sizes = [v.data.shape[axis] for v in values]
+            sizes = [v.data.shape[axis] for v in tensors]
             # boundaries to split out.grad
             offsets = np.cumsum(sizes)[:-1]
 
@@ -404,7 +413,7 @@ class Value:
             grads = np.split(out.grad, offsets, axis=axis)
 
             # route each chunk to its corresponding parent
-            for v, g in zip(values, grads):
+            for v, g in zip(tensors, grads):
                 v.grad += g
 
         out._backward = _backward
@@ -413,7 +422,7 @@ class Value:
 
     def reshape(self, new_shape):
         out_data = np.reshape(self.data, new_shape)
-        out = Value(out_data, _parents=(self,), op="reshape")
+        out = Tensor(out_data, _parents=(self,), op="reshape")
 
         def _backward():
             self.grad += np.reshape(out.grad, self.data.shape)
@@ -441,7 +450,6 @@ class Value:
     
         return g
     
-
     def pad(self, pad_h: int, pad_w: int):
         """
         Zero-pad a (C, H, W) tensor along H and W.
@@ -457,7 +465,7 @@ class Value:
         )
 
         out_data = np.pad(self.data, pad_width, mode='constant', constant_values=0.0)
-        out = Value(out_data, _parents=(self,), op="pad")        
+        out = Tensor(out_data, _parents=(self,), op="pad")        
             
         def _backward():
             if pad_h == 0 and pad_w == 0:
@@ -476,7 +484,7 @@ class Value:
         Gradient flows only to the maximum element(s).
         """
         out_data = np.max(self.data, axis=axis, keepdims=keepdims)
-        out = Value(out_data, _parents=(self,), op="max")
+        out = Tensor(out_data, _parents=(self,), op="max")
 
         def _backward():
             # Create mask where input equals max values

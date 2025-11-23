@@ -1,7 +1,7 @@
 
 import numpy as np
 import pytest
-from autograd.engine import Value
+from autograd.engine import Tensor
 from nn.functional import (
     im2col,
     softmax,
@@ -23,7 +23,7 @@ def test_im2col_single_channel_3x3_k2_s1():
         ]
     ]])  # shape (1, 1, 3, 3) - batch_size=1, channels=1
 
-    X = Value(X_np)
+    X = Tensor(X_np)
     cols = im2col(X, kernel_size=2, stride=1)
 
     expected = np.array([[
@@ -50,7 +50,7 @@ def test_im2col_two_channels_3x3_k2_s1():
         ],  # C1
     ]])  # shape (1, 2, 3, 3) - batch_size=1, channels=2
 
-    X = Value(X_np)
+    X = Tensor(X_np)
     cols = im2col(X, kernel_size=2, stride=1)
 
     # Expected: each column is [C0_patch_flat; C1_patch_flat]
@@ -70,7 +70,7 @@ def test_im2col_two_channels_3x3_k2_s1():
 
 def test_im2col_stride_shape():
     X_np = np.arange(1 * 1 * 5 * 5, dtype=float).reshape(1, 1, 5, 5)
-    X = Value(X_np)
+    X = Tensor(X_np)
 
     k = 3
 
@@ -87,7 +87,7 @@ def test_im2col_stride_shape():
 
 def test_im2col_backward_overlaps():
     X_np = np.arange(1 * 1 * 3 * 3, dtype=float).reshape(1, 1, 3, 3)
-    X = Value(X_np)
+    X = Tensor(X_np)
 
     cols = im2col(X, kernel_size=2, stride=1)  # (1, 4, 4)
     loss = cols.sum()                          # scalar
@@ -116,14 +116,14 @@ def test_im2col_conv_equivalence():
         ]
     ]])  # (1, 1, 3, 3)
 
-    X = Value(X_np)
+    X = Tensor(X_np)
 
     k = 2
     cols = im2col(X, kernel_size=k, stride=1)   # (1, 4, 4)
 
     # Single filter, all ones → sums of each 2x2 patch
     W_np = np.ones((1, 1, k, k), dtype=float)
-    W = Value(W_np)
+    W = Tensor(W_np)
 
     W_mat = W.reshape((1, 1 * k * k))          # (1, 4)
     Y_cols = W_mat @ cols                      # (1, 1, 4) - broadcasts over batch
@@ -147,7 +147,7 @@ def test_im2col_padding_forward():
         ]
     ]])  # (1, 1, 3, 3)
 
-    X = Value(X_np)
+    X = Tensor(X_np)
     cols = im2col(X, kernel_size=3, stride=1, padding=1)
 
     # padded input is (1, 1, 5, 5)
@@ -164,7 +164,7 @@ def test_im2col_padding_backward():
         ]
     ]])  # (1, 1, 3, 3)
 
-    X = Value(X_np)
+    X = Tensor(X_np)
 
     # single padding stage: let im2col handle pad
     cols = im2col(X, kernel_size=3, stride=1, padding=1)
@@ -184,7 +184,7 @@ def test_im2col_padding_backward():
 
 def test_softmax_basic():
     logits_np = np.array([[1.0, 2.0, 3.0]])
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits)
 
@@ -198,7 +198,7 @@ def test_softmax_basic():
 def test_softmax_sum_to_one():
     logits_np = np.array([[1.0, 2.0, 3.0, 4.0],
                           [5.0, 6.0, 7.0, 8.0]])
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits)
 
@@ -208,7 +208,7 @@ def test_softmax_sum_to_one():
 
 def test_softmax_backward():
     logits_np = np.array([[1.0, 2.0, 3.0]])
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits)
     loss = probs.sum()
@@ -223,8 +223,8 @@ def test_cross_entropy_basic():
     logits_np = np.array([[0.1, 0.2, 0.7]])
     targets_np = np.array([[0.0, 0.0, 1.0]])  # Class 2 is correct
 
-    logits = Value(logits_np)
-    targets = Value(targets_np)
+    logits = Tensor(logits_np)
+    targets = Tensor(targets_np)
 
     loss = cross_entropy(logits, targets)
 
@@ -241,8 +241,8 @@ def test_cross_entropy_backward():
     targets_np = np.array([[1.0, 0.0, 0.0],
                            [0.0, 1.0, 0.0]])
 
-    logits = Value(logits_np)
-    targets = Value(targets_np)
+    logits = Tensor(logits_np)
+    targets = Tensor(targets_np)
 
     loss = cross_entropy(logits, targets)
     loss.backward()
@@ -256,8 +256,8 @@ def test_cross_entropy_perfect_prediction():
     logits_np = np.array([[0.0, 0.0, 10.0]])
     targets_np = np.array([[0.0, 0.0, 1.0]])
 
-    logits = Value(logits_np)
-    targets = Value(targets_np)
+    logits = Tensor(logits_np)
+    targets = Tensor(targets_np)
 
     loss = cross_entropy(logits, targets)
 
@@ -268,8 +268,8 @@ def test_mse_basic():
     predictions_np = np.array([[1.0, 2.0, 3.0]])
     targets_np = np.array([[1.5, 2.5, 3.5]])
 
-    predictions = Value(predictions_np)
-    targets = Value(targets_np)
+    predictions = Tensor(predictions_np)
+    targets = Tensor(targets_np)
 
     loss = mse(predictions, targets)
 
@@ -283,8 +283,8 @@ def test_mse_zero_loss():
     predictions_np = np.array([[1.0, 2.0, 3.0],
                                [4.0, 5.0, 6.0]])
 
-    predictions = Value(predictions_np)
-    targets = Value(predictions_np)  # Same as predictions
+    predictions = Tensor(predictions_np)
+    targets = Tensor(predictions_np)  # Same as predictions
 
     loss = mse(predictions, targets)
 
@@ -295,8 +295,8 @@ def test_mse_backward():
     predictions_np = np.array([[1.0, 2.0, 3.0]])
     targets_np = np.array([[2.0, 3.0, 4.0]])
 
-    predictions = Value(predictions_np)
-    targets = Value(targets_np)
+    predictions = Tensor(predictions_np)
+    targets = Tensor(targets_np)
 
     loss = mse(predictions, targets)
     loss.backward()
@@ -309,7 +309,7 @@ def test_mse_backward():
 
 def test_sigmoid_basic():
     x_np = np.array([[0.0, 1.0, -1.0, 2.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = sigmoid(x)
 
@@ -321,7 +321,7 @@ def test_sigmoid_basic():
 
 def test_sigmoid_bounds():
     x_np = np.array([[-100.0, 0.0, 100.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = sigmoid(x)
 
@@ -334,7 +334,7 @@ def test_sigmoid_bounds():
 
 def test_sigmoid_backward():
     x_np = np.array([[1.0, 2.0, 3.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = sigmoid(x)
     loss = result.sum()
@@ -349,8 +349,8 @@ def test_binary_cross_entropy_basic():
     pred_np = np.array([[0.7, 0.3, 0.9]])
     target_np = np.array([[1.0, 0.0, 1.0]])
 
-    pred = Value(pred_np)
-    target = Value(target_np)
+    pred = Tensor(pred_np)
+    target = Tensor(target_np)
 
     loss = binary_cross_entropy(pred, target)
 
@@ -366,8 +366,8 @@ def test_binary_cross_entropy_perfect_prediction():
     pred_np = np.array([[0.999999, 0.000001]])
     target_np = np.array([[1.0, 0.0]])
 
-    pred = Value(pred_np)
-    target = Value(target_np)
+    pred = Tensor(pred_np)
+    target = Tensor(target_np)
 
     loss = binary_cross_entropy(pred, target)
 
@@ -378,8 +378,8 @@ def test_binary_cross_entropy_backward():
     pred_np = np.array([[0.6, 0.4, 0.8]])
     target_np = np.array([[1.0, 0.0, 1.0]])
 
-    pred = Value(pred_np)
-    target = Value(target_np)
+    pred = Tensor(pred_np)
+    target = Tensor(target_np)
 
     loss = binary_cross_entropy(pred, target)
     loss.backward()
@@ -402,9 +402,9 @@ def test_conv2d_basic():
     weight_np = np.ones((1, 1, 2, 2))
     bias_np = np.array([0.0])
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -432,9 +432,9 @@ def test_conv2d_with_bias():
     weight_np = np.ones((1, 1, 2, 2))
     bias_np = np.array([10.0])  # Non-zero bias
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -463,9 +463,9 @@ def test_conv2d_multiple_output_channels():
     weight_np[1] = 2.0  # Second channel has weight 2
     bias_np = np.array([0.0, 0.0])
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -489,9 +489,9 @@ def test_conv2d_stride():
     weight_np = np.ones((1, 1, 3, 3))
     bias_np = np.array([0.0])
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     # Stride 1
     result_s1 = conv2d(x, weight, bias, stride=1, padding=0)
@@ -516,9 +516,9 @@ def test_conv2d_padding():
     weight_np = np.ones((1, 1, 3, 3))
     bias_np = np.array([0.0])
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=1)
 
@@ -532,9 +532,9 @@ def test_conv2d_backward():
     weight_np = np.ones((1, 1, 2, 2))
     bias_np = np.array([0.0])
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
     loss = result.sum()
@@ -571,9 +571,9 @@ def test_conv2d_batched_basic():
     weight_np = np.ones((1, 1, 2, 2))
     bias_np = np.array([0.0])
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -602,9 +602,9 @@ def test_conv2d_batched_multiple_channels():
     weight_np = np.random.randn(2, 2, 2, 2)
     bias_np = np.random.randn(2)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -617,9 +617,9 @@ def test_conv2d_batched_backward():
     weight_np = np.random.randn(3, 2, 2, 2)  # 3 output channels
     bias_np = np.random.randn(3)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
     loss = result.sum()
@@ -647,10 +647,10 @@ def test_conv2d_batched_independence():
     weight_np = np.random.randn(3, 2, 3, 3)
     bias_np = np.random.randn(3)
 
-    x_single = Value(x_single_np)
-    x_batched = Value(x_batched_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x_single = Tensor(x_single_np)
+    x_batched = Tensor(x_batched_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result_single = conv2d(x_single, weight, bias, stride=1, padding=1)
     result_batched = conv2d(x_batched, weight, bias, stride=1, padding=1)
@@ -668,7 +668,7 @@ def test_max_no_axis():
     """Test max reduction over all elements."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max()
 
@@ -681,7 +681,7 @@ def test_max_axis_0():
     """Test max reduction along axis 0."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=0)
 
@@ -693,7 +693,7 @@ def test_max_axis_1():
     """Test max reduction along axis 1."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=1)
 
@@ -705,7 +705,7 @@ def test_max_keepdims_true():
     """Test max with keepdims=True."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=1, keepdims=True)
 
@@ -717,7 +717,7 @@ def test_max_backward_single_max():
     """Test backward pass when there's a unique maximum."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max()
     result.backward()
@@ -732,7 +732,7 @@ def test_max_backward_axis():
     """Test backward pass with axis reduction."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=1)  # Max along rows
     loss = result.sum()  # Sum the maxes
@@ -750,7 +750,7 @@ def test_max_backward_keepdims():
     """Test backward pass with keepdims=True."""
     x_np = np.array([[1.0, 5.0, 3.0],
                      [4.0, 2.0, 6.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=1, keepdims=True)
     loss = result.sum()
@@ -765,7 +765,7 @@ def test_max_backward_keepdims():
 def test_max_3d_tensor():
     """Test max on a 3D tensor."""
     x_np = np.random.randn(2, 3, 4)
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=2)
 
@@ -777,7 +777,7 @@ def test_max_backward_tied_values():
     """Test backward when multiple elements tie for maximum."""
     x_np = np.array([[5.0, 5.0, 3.0],
                      [4.0, 2.0, 4.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=1)
     loss = result.sum()
@@ -805,7 +805,7 @@ def test_im2patches_basic():
         ]
     ]])  # (1, 1, 3, 3)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     patches = im2patches(x, kernel_size=2, stride=1)
 
     # Should extract 4 patches of size 2x2
@@ -823,7 +823,7 @@ def test_im2patches_basic():
 def test_im2patches_stride():
     """Test patch extraction with different stride."""
     x_np = np.arange(1 * 1 * 5 * 5, dtype=float).reshape(1, 1, 5, 5)
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     # Stride 1: (5 - 3)//1 + 1 = 3 patches in each dimension
     patches_s1 = im2patches(x, kernel_size=3, stride=1)
@@ -843,7 +843,7 @@ def test_im2patches_padding():
         ]
     ]])  # (1, 1, 3, 3)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     patches = im2patches(x, kernel_size=3, stride=1, padding=1)
 
     # With padding=1, input becomes (1, 1, 5, 5)
@@ -863,7 +863,7 @@ def test_im2patches_padding():
 def test_im2patches_multi_channel():
     """Test patch extraction with multiple channels."""
     x_np = np.random.randn(1, 3, 4, 4)  # 3 channels
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     patches = im2patches(x, kernel_size=2, stride=1)
 
@@ -874,7 +874,7 @@ def test_im2patches_multi_channel():
 def test_im2patches_batched():
     """Test patch extraction with multiple batches."""
     x_np = np.random.randn(4, 2, 5, 5)  # 4 batches, 2 channels
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     patches = im2patches(x, kernel_size=3, stride=2)
 
@@ -885,7 +885,7 @@ def test_im2patches_batched():
 def test_im2patches_backward():
     """Test backward pass for im2patches."""
     x_np = np.arange(1 * 1 * 4 * 4, dtype=float).reshape(1, 1, 4, 4)
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     patches = im2patches(x, kernel_size=2, stride=1)
     loss = patches.sum()
@@ -911,7 +911,7 @@ def test_im2patches_backward():
 def test_im2patches_backward_with_padding():
     """Test backward pass with padding."""
     x_np = np.ones((1, 1, 3, 3))
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     patches = im2patches(x, kernel_size=3, stride=1, padding=1)
     loss = patches.sum()
@@ -948,7 +948,7 @@ def test_max_pool2d_basic():
         ]
     ]])  # (1, 1, 4, 4)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     result = max_pool2d(x, pool_size=2, stride=2)
 
     # With pool_size=2, stride=2, we get 2x2 output
@@ -984,7 +984,7 @@ def test_max_pool2d_single_channel():
         ]
     ]])  # (1, 1, 4, 4)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     result = max_pool2d(x, pool_size=2, stride=2)
 
     # Each 2x2 region's max:
@@ -1003,7 +1003,7 @@ def test_max_pool2d_single_channel():
 def test_max_pool2d_multi_channel():
     """Test max pooling with multiple channels."""
     x_np = np.random.randn(1, 3, 4, 4)  # 3 channels
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = max_pool2d(x, pool_size=2, stride=2)
 
@@ -1019,7 +1019,7 @@ def test_max_pool2d_multi_channel():
 def test_max_pool2d_batched():
     """Test max pooling with multiple batches."""
     x_np = np.random.randn(3, 2, 4, 4)  # 3 batches, 2 channels
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = max_pool2d(x, pool_size=2, stride=2)
 
@@ -1037,7 +1037,7 @@ def test_max_pool2d_backward():
         ]
     ]])  # (1, 1, 4, 4)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     result = max_pool2d(x, pool_size=2, stride=2)
     loss = result.sum()
     loss.backward()
@@ -1063,7 +1063,7 @@ def test_max_pool2d_backward():
 def test_max_pool2d_backward_multi_channel():
     """Test backward pass with multiple channels."""
     x_np = np.random.randn(2, 3, 4, 4)  # 2 batches, 3 channels
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = max_pool2d(x, pool_size=2, stride=2)
     loss = result.sum()
@@ -1087,7 +1087,7 @@ def test_max_pool2d_stride_1():
         ]
     ]])  # (1, 1, 3, 3)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     result = max_pool2d(x, pool_size=2, stride=1)
 
     # With stride=1, pools overlap
@@ -1114,7 +1114,7 @@ def test_max_pool2d_backward_overlapping():
         ]
     ]])  # (1, 1, 3, 3)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     result = max_pool2d(x, pool_size=2, stride=1)
     loss = result.sum()
     loss.backward()
@@ -1144,7 +1144,7 @@ def test_softmax_axis_0():
     """Test softmax along axis 0."""
     logits_np = np.array([[1.0, 2.0, 3.0],
                           [4.0, 5.0, 6.0]])
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits, axis=0)
 
@@ -1155,7 +1155,7 @@ def test_softmax_axis_0():
 def test_softmax_negative_values():
     """Test softmax with negative values."""
     logits_np = np.array([[-5.0, -2.0, -1.0]])
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits)
 
@@ -1166,7 +1166,7 @@ def test_softmax_negative_values():
 def test_softmax_single_element():
     """Test softmax with single element."""
     logits_np = np.array([[5.0]])
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits)
 
@@ -1178,8 +1178,8 @@ def test_cross_entropy_batch_size_one():
     logits_np = np.array([[1.0, 2.0, 3.0]])
     targets_np = np.array([[0.0, 0.0, 1.0]])
 
-    logits = Value(logits_np)
-    targets = Value(targets_np)
+    logits = Tensor(logits_np)
+    targets = Tensor(targets_np)
 
     loss = cross_entropy(logits, targets)
 
@@ -1192,8 +1192,8 @@ def test_cross_entropy_uniform_distribution():
     logits_np = np.array([[1.0, 2.0, 3.0]])
     targets_np = np.array([[1/3, 1/3, 1/3]])
 
-    logits = Value(logits_np)
-    targets = Value(targets_np)
+    logits = Tensor(logits_np)
+    targets = Tensor(targets_np)
 
     loss = cross_entropy(logits, targets)
 
@@ -1206,8 +1206,8 @@ def test_mse_single_element():
     predictions_np = np.array([[5.0]])
     targets_np = np.array([[3.0]])
 
-    predictions = Value(predictions_np)
-    targets = Value(targets_np)
+    predictions = Tensor(predictions_np)
+    targets = Tensor(targets_np)
 
     loss = mse(predictions, targets)
 
@@ -1219,8 +1219,8 @@ def test_mse_negative_values():
     predictions_np = np.array([[-1.0, -2.0, -3.0]])
     targets_np = np.array([[-1.5, -2.5, -3.5]])
 
-    predictions = Value(predictions_np)
-    targets = Value(targets_np)
+    predictions = Tensor(predictions_np)
+    targets = Tensor(targets_np)
 
     loss = mse(predictions, targets)
 
@@ -1232,8 +1232,8 @@ def test_mse_large_batch():
     predictions_np = np.random.randn(100, 10)
     targets_np = np.random.randn(100, 10)
 
-    predictions = Value(predictions_np)
-    targets = Value(targets_np)
+    predictions = Tensor(predictions_np)
+    targets = Tensor(targets_np)
 
     loss = mse(predictions, targets)
 
@@ -1243,7 +1243,7 @@ def test_mse_large_batch():
 def test_sigmoid_large_negative():
     """Test sigmoid with very large negative values."""
     x_np = np.array([[-100.0, -50.0, -10.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = sigmoid(x)
 
@@ -1254,7 +1254,7 @@ def test_sigmoid_large_negative():
 def test_sigmoid_large_positive():
     """Test sigmoid with very large positive values."""
     x_np = np.array([[100.0, 50.0, 10.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = sigmoid(x)
 
@@ -1265,7 +1265,7 @@ def test_sigmoid_large_positive():
 def test_sigmoid_zero():
     """Test sigmoid at zero."""
     x_np = np.array([[0.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = sigmoid(x)
 
@@ -1278,8 +1278,8 @@ def test_binary_cross_entropy_extreme_values():
     pred_np = np.array([[0.0, 1.0, 0.5]])
     target_np = np.array([[0.0, 1.0, 0.5]])
 
-    pred = Value(pred_np)
-    target = Value(target_np)
+    pred = Tensor(pred_np)
+    target = Tensor(target_np)
 
     loss = binary_cross_entropy(pred, target)
 
@@ -1294,8 +1294,8 @@ def test_binary_cross_entropy_worst_case():
     pred_np = np.array([[0.01, 0.99]])
     target_np = np.array([[1.0, 0.0]])
 
-    pred = Value(pred_np)
-    target = Value(target_np)
+    pred = Tensor(pred_np)
+    target = Tensor(target_np)
 
     loss = binary_cross_entropy(pred, target)
 
@@ -1307,8 +1307,8 @@ def test_binary_cross_entropy_single_sample():
     pred_np = np.array([[0.8]])
     target_np = np.array([[1.0]])
 
-    pred = Value(pred_np)
-    target = Value(target_np)
+    pred = Tensor(pred_np)
+    target = Tensor(target_np)
 
     loss = binary_cross_entropy(pred, target)
 
@@ -1325,7 +1325,7 @@ def test_im2col_single_pixel_kernel():
         ]
     ]])  # (1, 1, 3, 3)
 
-    X = Value(X_np)
+    X = Tensor(X_np)
     cols = im2col(X, kernel_size=1, stride=1)
 
     # With 1x1 kernel, each pixel is a separate column
@@ -1335,7 +1335,7 @@ def test_im2col_single_pixel_kernel():
 def test_im2col_stride_equals_kernel():
     """Test im2col when stride equals kernel size (no overlap)."""
     X_np = np.arange(1 * 1 * 4 * 4, dtype=float).reshape(1, 1, 4, 4)
-    X = Value(X_np)
+    X = Tensor(X_np)
 
     cols = im2col(X, kernel_size=2, stride=2)
 
@@ -1348,9 +1348,9 @@ def test_conv2d_no_bias():
     weight_np = np.ones((1, 1, 2, 2))
     bias_np = np.zeros(1)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -1364,9 +1364,9 @@ def test_conv2d_single_pixel_output():
     weight_np = np.ones((1, 1, 3, 3))
     bias_np = np.zeros(1)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -1382,9 +1382,9 @@ def test_conv2d_different_input_output_channels():
     weight_np = np.random.randn(5, 3, 3, 3)
     bias_np = np.random.randn(5)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -1395,7 +1395,7 @@ def test_max_negative_values():
     """Test max with all negative values."""
     x_np = np.array([[-5.0, -3.0, -8.0],
                      [-2.0, -9.0, -1.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max()
 
@@ -1405,7 +1405,7 @@ def test_max_negative_values():
 def test_max_single_element():
     """Test max with single element."""
     x_np = np.array([[42.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max()
 
@@ -1414,7 +1414,7 @@ def test_max_single_element():
 def test_max_all_same_values():
     """Test max when all values are identical."""
     x_np = np.ones((3, 4)) * 7.0
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max(axis=0)
 
@@ -1424,7 +1424,7 @@ def test_max_all_same_values():
 def test_max_backward_all_tied():
     """Test max backward when all elements are tied."""
     x_np = np.ones((2, 3)) * 5.0
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max()
     result.backward()
@@ -1435,7 +1435,7 @@ def test_max_backward_all_tied():
 def test_im2patches_no_padding():
     """Test im2patches explicitly with no padding."""
     x_np = np.arange(1 * 1 * 4 * 4, dtype=float).reshape(1, 1, 4, 4)
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     patches = im2patches(x, kernel_size=2, stride=2, padding=0)
 
@@ -1445,7 +1445,7 @@ def test_im2patches_no_padding():
 def test_im2patches_large_stride():
     """Test im2patches with stride larger than typical."""
     x_np = np.arange(1 * 1 * 8 * 8, dtype=float).reshape(1, 1, 8, 8)
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     # Large stride of 3
     patches = im2patches(x, kernel_size=2, stride=3)
@@ -1467,7 +1467,7 @@ def test_max_pool2d_identity():
         ]
     ]])  # (1, 1, 2, 2)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     # Pool size 1 should return same values
     # But wait, looking at the implementation, there's a bug in max_pool2d:
     # H_out = (H - pool_h) // 2
@@ -1482,7 +1482,7 @@ def test_max_pool2d_identity():
 def test_max_pool2d_all_same():
     """Test max pooling when all values in a pool are the same."""
     x_np = np.ones((1, 1, 4, 4))
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = max_pool2d(x, pool_size=2, stride=2)
 
@@ -1499,9 +1499,9 @@ def test_conv2d_identity_filter():
     weight_np[0, 0, 0, 0] = 1.0
     bias_np = np.zeros(1)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=0)
 
@@ -1512,7 +1512,7 @@ def test_conv2d_identity_filter():
 def test_softmax_3d_tensor():
     """Test softmax on a 3D tensor."""
     logits_np = np.random.randn(2, 3, 4)
-    logits = Value(logits_np)
+    logits = Tensor(logits_np)
 
     probs = softmax(logits, axis=-1)
 
@@ -1531,8 +1531,8 @@ def test_cross_entropy_large_batch():
     target_indices = np.random.randint(0, num_classes, batch_size)
     targets_np[np.arange(batch_size), target_indices] = 1.0
 
-    logits = Value(logits_np)
-    targets = Value(targets_np)
+    logits = Tensor(logits_np)
+    targets = Tensor(targets_np)
 
     loss = cross_entropy(logits, targets)
 
@@ -1550,7 +1550,7 @@ def numerical_gradient(f, x, eps=1e-5):
     Compute numerical gradient using finite differences.
 
     Args:
-        f: Function that takes a Value and returns a scalar Value
+        f: Function that takes a Tensor and returns a scalar Tensor
         x: numpy array
         eps: Small perturbation for finite differences
 
@@ -1566,11 +1566,11 @@ def numerical_gradient(f, x, eps=1e-5):
 
         # f(x + eps)
         x[idx] = old_value + eps
-        fxp = f(Value(x.copy())).data
+        fxp = f(Tensor(x.copy())).data
 
         # f(x - eps)
         x[idx] = old_value - eps
-        fxm = f(Value(x.copy())).data
+        fxm = f(Tensor(x.copy())).data
 
         # Restore
         x[idx] = old_value
@@ -1589,7 +1589,7 @@ def test_sigmoid_gradient_numerical():
         return sigmoid(x).sum()
 
     # Analytical gradient
-    x = Value(x_np.copy())
+    x = Tensor(x_np.copy())
     loss = f(x)
     loss.backward()
     analytical_grad = x.grad
@@ -1608,7 +1608,7 @@ def test_softmax_gradient_numerical():
         return softmax(x).sum()
 
     # Analytical gradient
-    x = Value(x_np.copy())
+    x = Tensor(x_np.copy())
     loss = f(x)
     loss.backward()
     analytical_grad = x.grad
@@ -1625,11 +1625,11 @@ def test_mse_gradient_numerical():
     target_np = np.array([[1.0, 2.0, 0.0]])
 
     def f(pred):
-        target = Value(target_np)
+        target = Tensor(target_np)
         return mse(pred, target)
 
     # Analytical gradient
-    pred = Value(pred_np.copy())
+    pred = Tensor(pred_np.copy())
     loss = f(pred)
     loss.backward()
     analytical_grad = pred.grad
@@ -1646,11 +1646,11 @@ def test_binary_cross_entropy_gradient_numerical():
     target_np = np.array([[1.0, 0.0, 1.0]])
 
     def f(pred):
-        target = Value(target_np)
+        target = Tensor(target_np)
         return binary_cross_entropy(pred, target)
 
     # Analytical gradient
-    pred = Value(pred_np.copy())
+    pred = Tensor(pred_np.copy())
     loss = f(pred)
     loss.backward()
     analytical_grad = pred.grad
@@ -1669,12 +1669,12 @@ def test_conv2d_gradient_numerical():
     bias_np = np.random.randn(1) * 0.1
 
     def f(x):
-        weight = Value(weight_np)
-        bias = Value(bias_np)
+        weight = Tensor(weight_np)
+        bias = Tensor(bias_np)
         return conv2d(x, weight, bias, stride=1, padding=0).sum()
 
     # Analytical gradient
-    x = Value(x_np.copy())
+    x = Tensor(x_np.copy())
     loss = f(x)
     loss.backward()
     analytical_grad = x.grad
@@ -1698,7 +1698,7 @@ def test_im2col_minimal_input():
         ]
     ]])  # (1, 1, 2, 2)
 
-    X = Value(X_np)
+    X = Tensor(X_np)
     cols = im2col(X, kernel_size=2, stride=1)
 
     # Should produce single patch
@@ -1717,9 +1717,9 @@ def test_conv2d_large_padding():
     weight_np = np.ones((1, 1, 2, 2))
     bias_np = np.zeros(1)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     # Padding of 2 on a 2x2 input with 2x2 kernel
     result = conv2d(x, weight, bias, stride=1, padding=2)
@@ -1730,7 +1730,7 @@ def test_conv2d_large_padding():
 def test_max_pool2d_large_input():
     """Test max pooling on larger input."""
     x_np = np.random.randn(2, 3, 8, 8)
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = max_pool2d(x, pool_size=2, stride=2)
 
@@ -1746,7 +1746,7 @@ def test_im2patches_single_patch():
         ]
     ]])  # (1, 1, 2, 2)
 
-    x = Value(x_np)
+    x = Tensor(x_np)
     patches = im2patches(x, kernel_size=2, stride=1)
 
     # Should have only 1 patch
@@ -1757,7 +1757,7 @@ def test_max_with_zeros():
     """Test max operation with array containing zeros."""
     x_np = np.array([[0.0, -1.0, -2.0],
                      [0.0, 0.0, -3.0]])
-    x = Value(x_np)
+    x = Tensor(x_np)
 
     result = x.max()
 
@@ -1769,9 +1769,9 @@ def test_conv2d_asymmetric_channels():
     weight_np = np.random.randn(10, 1, 3, 3)  # 10 output channels
     bias_np = np.random.randn(10)
 
-    x = Value(x_np)
-    weight = Value(weight_np)
-    bias = Value(bias_np)
+    x = Tensor(x_np)
+    weight = Tensor(weight_np)
+    bias = Tensor(bias_np)
 
     result = conv2d(x, weight, bias, stride=1, padding=1)
 

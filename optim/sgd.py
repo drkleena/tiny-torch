@@ -13,7 +13,7 @@ class SGD:
         param = param - learning_rate * gradient
 
     Args:
-        params: Iterable of Value objects representing model parameters
+        params: Iterable of Tensor objects representing model parameters
         lr: Learning rate (step size) for parameter updates
 
     Example:
@@ -33,7 +33,7 @@ class SGD:
         Initialize the SGD optimizer.
 
         Args:
-            params: List of Value objects (model parameters) to optimize
+            params: List of Tensor objects (model parameters) to optimize
             lr: Learning rate (default: 0.1)
         """
         self.params = list(params)
